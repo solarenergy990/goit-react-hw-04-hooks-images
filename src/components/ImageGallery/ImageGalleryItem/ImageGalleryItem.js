@@ -12,7 +12,6 @@ const ImageGalleryItem = ({ image, onModalOpen }) => {
         src={smallImg}
         alt={imgTag}
         onClick={(evt) => {
-          console.log(evt.target);
           onModalOpen(evt.target.attributes["data-large"].value);
         }}
         className={s.ImageGalleryItemImage}

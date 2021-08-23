@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { useState, useEffect } from "react";
 import "react-loader-spinner/dist/loader/css/react-spinner-loader.css";
 import Loader from "react-loader-spinner";
 import ImageGallery from "../ImageGallery/ImageGallery";
@@ -11,117 +11,99 @@ import imageAPI from "../../services/image-api";
 
 import dataExtractor from "../../utils/dataExtractor";
 
-class App extends Component {
-  state = {
-    pictures: [],
-    currentPage: 1,
-    searchQuery: "",
-    isLoading: false,
-    error: null,
-    openModal: false,
-  };
+const App = ({ onSubmit }) => {
+  const [pictures, setPictures] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  // const [error, setError] = useState(null);
+  const [openModal, setOpenModal] = useState(false);
+  const [largeImg, setLargeImg] = useState("");
 
-  handleFormSubmit = (searchQuery) => {
+  const handleFormSubmit = (onSubmit) => {
     const page = 1;
-
-    // console.log(searchQuery);
-    this.setState({
-      searchQuery,
-      currentPage: page,
-      pictures: [],
-    });
+    setSearchQuery(onSubmit);
+    setCurrentPage(page);
+    setPictures([]);
   };
 
-  componentDidUpdate(prevProps, prevState) {
-    const { currentPage, searchQuery } = this.state;
+  useEffect(() => {
+    if (searchQuery === "") return;
 
-    if (
-      searchQuery !== prevState.searchQuery ||
-      currentPage !== prevState.currentPage
-    ) {
-      this.fetchPictures(searchQuery, currentPage);
-    }
-    if (currentPage > 1) {
-      this.scrollDown();
-    }
-  }
+    const fetchPictures = (query, page) => {
+      return imageAPI
+        .fetchImage(query, page)
+        .then((pictures) => {
+          setPictures((prevPictures) => [
+            ...prevPictures,
+            ...dataExtractor(pictures),
+          ]);
+          setIsLoading(false);
 
-  fetchPictures = (query, page) => {
-    return imageAPI.fetchImage(query, page).then((pictures) => {
-      this.setState((prevState) => ({
-        pictures: [...prevState.pictures, ...dataExtractor(pictures)],
+          if (pictures.length === 0) {
+            alert("Nothing found!");
+          }
+        })
+        .then(() => {
+          if (currentPage > 1) {
+            scrollDown();
+          }
+        });
+    };
 
-        isLoading: false,
-      }));
-      if (this.state.pictures.length === 0) {
-        alert("Nothing found!");
-      }
-    });
-  };
+    fetchPictures(searchQuery, currentPage);
+  }, [currentPage, searchQuery]);
 
-  scrollDown = () => {
+  const scrollDown = () => {
     window.scrollTo({
       top: document.documentElement.scrollHeight,
       behavior: "smooth",
     });
   };
 
-  onLoadMore = () => {
-    this.setState((prevState) => ({
-      currentPage: prevState.currentPage + 1,
-      isLoading: true,
-    }));
+  const onLoadMore = () => {
+    setCurrentPage((prevPage) => {
+      return prevPage + 1;
+    });
+
+    setIsLoading(true);
   };
 
-  setLargeImg = (imgLink) => {
-    // console.log(imgLink);
-    return this.setState(({ largeImg }) => ({ largeImg: imgLink }));
+  const onLargeImgOpen = (imgLink) => {
+    setLargeImg(imgLink);
+    modalToggler();
   };
 
-  onLargeImgOpen = (imgLink) => {
-    // console.log(imgLink);
-    this.setLargeImg(imgLink);
-    this.modalToggler();
+  const modalToggler = () => {
+    setOpenModal((prevOpenModal) => {
+      if (prevOpenModal === true) {
+        return false;
+      } else if (prevOpenModal === false) {
+        return true;
+      }
+    });
   };
 
-  modalToggler = () => {
-    this.setState(({ openModal }) => ({ openModal: !openModal }));
-  };
-
-  render() {
-    const { pictures, openModal, isLoading, largeImg, searchQuery } =
-      this.state;
-
-    return (
-      <div className={s.App}>
-        {openModal && (
-          <Modal
-            onModalClose={this.modalToggler}
-            src={largeImg}
-            alt={searchQuery}
-          />
+  return (
+    <div className={s.App}>
+      {openModal && (
+        <Modal onModalClose={modalToggler} src={largeImg} alt={searchQuery} />
+      )}
+      <Searchbar onSubmit={handleFormSubmit} />
+      <Container>
+        {pictures.length > 0 && (
+          <ImageGallery imageArr={pictures} onModalOpen={onLargeImgOpen} />
         )}
-        <Searchbar onSubmit={this.handleFormSubmit} />
-        <Container>
-          {pictures.length > 0 && (
-            <ImageGallery
-              imageArr={pictures}
-              onModalOpen={this.onLargeImgOpen}
-            />
-          )}
-        </Container>
+      </Container>
 
-        <Container>
-          {isLoading && (
-            <Loader type="Grid" color="#00BFFF" height={80} width={80} />
-          )}
-          {pictures.length > 0 && !isLoading && (
-            <Button onClick={this.onLoadMore} />
-          )}
-        </Container>
-      </div>
-    );
-  }
-}
+      <Container>
+        {isLoading && (
+          <Loader type="Grid" color="#00BFFF" height={80} width={80} />
+        )}
+        {pictures.length > 0 && !isLoading && <Button onClick={onLoadMore} />}
+      </Container>
+    </div>
+  );
+};
 
 export default App;
