@@ -1,3 +1,3 @@
-# goit-react-hw-04-hooks-images
+# image-finder
 
-hw-04-hooks
+
